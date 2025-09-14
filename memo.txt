@@ -1,0 +1,194 @@
+Working with files
+----------------------------------------------------------------------------------------------------
+
+product.js
+--------------------------------------------------
+const fs = require('fs');
+const path = require('path');
+
+const p = path.join(
+  path.dirname(process.mainModule.filename),
+  'data',
+  'products.json'
+);
+
+const getProductsFromFile = cb => {
+  fs.readFile(p, (err, fileContent) => {
+    if (err) {
+      cb([]);
+    } else {
+      cb(JSON.parse(fileContent));
+    }
+  });
+};
+
+module.exports = class Product {
+  constructor(id, title, imageUrl, description, price) {
+    this.id = id;
+    this.title = title;
+    this.imageUrl = imageUrl;
+    this.description = description;
+    this.price = price;
+  }
+
+  save() {
+    getProductsFromFile(products => {
+      if (this.id) {
+        const existingProductIndex = products.findIndex(prod => prod.id === this.id);
+        const updatedProducts = [...products];
+        updatedProducts[existingProductIndex] = this;
+        fs.writeFile(p, JSON.stringify(updatedProducts), err => {
+          console.log(err);
+        });
+      } else {
+        this.id = Math.random().toString();
+        products.push(this);
+        fs.writeFile(p, JSON.stringify(products), err => {
+          console.log(err);
+        });
+      }
+    });
+  }
+
+  static deleteById(id) {
+    getProductsFromFile(products => {
+      const product = products.find(prod => prod.id === id);
+      const updatedProducts = products.filter(p => p.id !== id);
+      fs.writeFile(p, JSON.stringify(updatedProducts), err => {
+        if(!err) {
+          Cart.deleteProduct(id, product.price);
+        }
+      })
+    });
+  }
+
+  static fetchAll(cb) {
+    getProductsFromFile(cb);
+  }
+
+  static findById(id, cb) {
+    getProductsFromFile(products => {
+      const product = products.find(p => p.id === id);
+      cb(product);
+    });
+  }
+
+};
+
+
+
+
+Working with database
+----------------------------------------------------------------------------------------------------
+database.js
+--------------------------------------------------
+const mariadb = require('mariadb');
+
+const pool = mariadb.createPool({
+        host: 'localhost',
+        user: 'andres',
+        password: 'anfeques',
+        database: 'node-complete',
+        connectionLimit: 5 // Example connection limit
+    });
+
+module.exports = pool;
+
+
+product.js
+--------------------------------------------------
+const db = require('../util/database')
+
+module.exports = class Product {
+  constructor(id, title, imageUrl, description, price) {
+    this.id = id;
+    this.title = title;
+    this.imageUrl = imageUrl;
+    this.description = description;
+    this.price = price;
+  }
+
+  save() {
+    return db.getConnection().then(conn => conn.execute('INSERT INTO products (title, price, imageUrl, description) VALUES (?, ?, ?, ?)',
+      [this.title, this.price, this.imageUrl, this.description]
+    ));
+  }
+
+  static fetchAll(cb) {
+    return db.getConnection().then(conn => conn.execute('SELECT * FROM products'));
+  }
+
+  static findById(id, cb) {
+    return db.getConnection().then(conn => conn.execute('SELECT * FROM products WHERE products.id = ?', [id]));
+  }
+
+};
+
+
+Sequelize
+----------------------------------------------------------------------------------------------------
+
+database.js - Sequelize initialization
+--------------------------------------------------
+const { Sequelize } = require('sequelize');
+
+const sequelize = new Sequelize('node-complete', 'andres', 'anfeques', { 
+    dialect: 'mariadb', 
+    host: 'localhost'
+});
+
+module.exports = sequelize;
+
+
+product.js - Defining a Product table
+--------------------------------------------------
+const { Sequelize, DataTypes } = require('sequelize');
+
+const sequelize = require('../util/database');
+
+const Product = sequelize.define('product', {
+  id: {
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
+    allowNull: false,
+    primaryKey: true
+  },
+  title: DataTypes.STRING,
+  price: {
+    type: DataTypes.DOUBLE,
+    allowNull: false
+  },
+  imageUrl: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  description: {
+    type: DataTypes.STRING,
+    allowNull: false
+  }
+});
+
+module.exports = { Product };
+
+
+Query by PK
+--------------------------------------------------
+  Product.findByPk(prodId).then(product => {
+      res.render('shop/product-detail', { 
+      product: product,
+      pageTitle: product.title,
+      path: '/products'
+     });
+  })
+  .catch(err => console.log(err));
+
+Query with where
+--------------------------------------------------
+  Product.findAll({ where: {id: prodId }}).then(products => {
+      res.render('shop/product-detail', { 
+      product: products[0],
+      pageTitle: products[0].title,
+      path: '/products'
+     });
+  })
+  .catch(err => console.log(err));
