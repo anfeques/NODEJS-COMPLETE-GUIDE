@@ -5,7 +5,7 @@ const sequelize = new Sequelize('node-complete', 'andres', 'anfeques', {
     host: 'localhost'
 });
 
-module.exports = sequelize;
+module.exports = { sequelize };
 
 // const mariadb = require('mariadb');
 
