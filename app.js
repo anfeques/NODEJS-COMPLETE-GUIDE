@@ -6,6 +6,10 @@ const bodyParser = require('body-parser');
 const errorController = require('./controllers/error');
 const { Product } = require('./models/product')
 const { User } = require('./models/user')
+const { Cart } = require('./models/cart')
+const { CartItem } = require('./models/cart-item')
+const { Order } = require('./models/order')
+const { OrderItem } = require('./models/order-item')
 const { sequelize } = require('./util/database');
 
 const app = express();
@@ -35,6 +39,14 @@ app.use(errorController.get404);
 
 Product.belongsTo(User, { constraints:true, onDelete: 'CASCADE' });
 User.hasMany(Product);
+User.hasOne(Cart);
+Cart.hasMany(CartItem);
+Cart.belongsTo(User);
+Cart.belongsToMany(Product, { through: CartItem });
+Product.belongsToMany(Cart, { through: CartItem });
+Order.belongsTo(User);
+User.hasMany(Order);
+Order.belongsToMany(Product, { through: OrderItem })
 
 // sequelize.sync({ force: true })
 sequelize.sync()
@@ -50,7 +62,10 @@ sequelize.sync()
     return user;
 })
 .then(user => {
-    console.log(user);
+    // console.log(user);
+    return user.createCart();
+})
+.then(cart => {
     app.listen(3000);
 })
 .catch(err => {

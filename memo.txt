@@ -192,3 +192,40 @@ Query with where
      });
   })
   .catch(err => console.log(err));
+
+
+  Relations
+--------------------------------------------------
+    Product.belongsTo(User, { constraints:true, onDelete: 'CASCADE' });
+    User.hasMany(Product);
+    User.hasOne(Cart);
+    Cart.hasMany(CartItem);
+    Cart.belongsTo(User);
+    Cart.belongsToMany(Product, { through: CartItem });
+    Product.belongsToMany(Cart, { through: CartItem });
+    Order.belongsTo(User);
+    User.hasMany(Order);
+    Order.belongsToMany(Product, { through: OrderItem })
+
+Generated methods
+--------------------------------------------------
+User.findByPk(1);
+User.create({ name: 'Max', email: 'test@test.com' });
+user.createCart();
+user.getCart();
+user.getProducts();
+user.getProducts({ where: { id: productId }})
+user.createProduct({
+    title: title,
+    price: price,
+    imageUrl: imageUrl,
+    description: description,
+    userId: req.user.id
+  });
+cart.getProducts();
+cart.getProducts({ where: { id: prodId } });
+cart.addProduct(product, {
+        through: { quantity: newQuantity }
+      });
+order.addProducts(products);
+product.destroy();
